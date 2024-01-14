@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Split from "react-split";
 import Editor from "./components/Editor";
 import Sidebar from "./components/Sidebar";
@@ -6,8 +6,9 @@ import { nanoid } from "nanoid";
 
 function App() {
 
-  const [notes, setNotes] = React.useState([])
-  const [currentNoteId, setCurrentNoteId] = React.useState(
+  // Lazily initialize our 'notes' state so it doesn't react into local storage on every single render of App component
+  const [notes, setNotes] = useState(() => JSON.parse(localStorage.getItem("notes")) || [])
+  const [currentNoteId, setCurrentNoteId] = useState(
     (notes[0] && notes[0].id) || ""
   )
 
@@ -21,11 +22,22 @@ function App() {
   }
 
   function updateNote(text) {
-    setNotes(oldNotes => oldNotes.map(oldNote => {
-      return oldNote.id === currentNoteId
-        ? { ...oldNote, body: text }
-        : oldNote
-    }))
+    setNotes(oldNotes => {
+      const newNotesArr = []
+      for (let i = 0; i < oldNotes.length; i++) {
+        const oldNote = oldNotes[i];
+        if (oldNote.id === currentNoteId) {
+          newNotesArr.unshift({ ...oldNote, body: text })
+        } else {
+          newNotesArr.push(oldNote);
+        }
+      }
+      return newNotesArr;
+    })
+  }
+
+  function deleteNote(event, noteId) {
+    setNotes((oldNotes)=> oldNotes.filter(note=> note.id !== noteId))
   }
 
   function findCurrentNote() {
@@ -33,6 +45,10 @@ function App() {
       return note.id === currentNoteId
     }) || notes[0]
   }
+
+  useEffect(() => {
+    localStorage.setItem("notes", JSON.stringify(notes))
+  }, [notes])
 
   return (
     <main>
@@ -49,6 +65,7 @@ function App() {
               currentNote={findCurrentNote()}
               setCurrentNoteId={setCurrentNoteId}
               newNote={createNewNote}
+              deleteNote={deleteNote}
             />
             {
               currentNoteId &&
